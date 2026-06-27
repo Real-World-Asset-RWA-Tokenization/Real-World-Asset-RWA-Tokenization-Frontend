@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { formatCurrency, formatCompactNumber, getAssetClassColor, getAssetClassLabel } from '@/lib/utils'
@@ -8,7 +9,7 @@ interface TokenCardProps {
   onClick?: () => void
 }
 
-export function TokenCard({ asset, onClick }: TokenCardProps) {
+const TokenCard = memo(function TokenCard({ asset, onClick }: TokenCardProps) {
   return (
     <div
       className="cursor-pointer rounded-xl border bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-blue-200"
@@ -56,4 +57,6 @@ export function TokenCard({ asset, onClick }: TokenCardProps) {
       </div>
     </div>
   )
-}
+})
+
+export { TokenCard }

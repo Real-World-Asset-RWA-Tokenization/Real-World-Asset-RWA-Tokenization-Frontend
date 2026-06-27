@@ -5,19 +5,45 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 
+const STORAGE_KEY = 'rwa_settings'
+
+const DEFAULTS = {
+  issuerName: 'RWA Tokenization Inc.',
+  rpcUrl: 'https://soroban-testnet.stellar.org',
+  networkPassphrase: 'Test SDF Network ; September 2015',
+  kycProvider: 'sep12',
+  kycEndpoint: 'https://kyc-provider.example.com/api',
+  defaultApr: '5.0',
+  notificationEmail: 'admin@rwa-platform.com',
+}
+
+function loadSettings(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return { ...DEFAULTS, ...JSON.parse(raw) }
+  } catch {
+    // ignore corrupt storage
+  }
+  return DEFAULTS
+}
+
 export default function Settings() {
-  const [form, setForm] = useState({
-    issuerName: 'RWA Tokenization Inc.',
-    rpcUrl: 'https://soroban-testnet.stellar.org',
-    networkPassphrase: 'Test SDF Network ; September 2015',
-    kycProvider: 'sep12',
-    kycEndpoint: 'https://kyc-provider.example.com/api',
-    defaultApr: '5.0',
-    notificationEmail: 'admin@rwa-platform.com',
-  })
+  const [form, setForm] = useState(loadSettings)
+  const [saving, setSaving] = useState(false)
 
   function updateField(key: string, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function handleSave() {
+    setSaving(true)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(form))
+    setTimeout(() => setSaving(false), 500)
+  }
+
+  function handleReset() {
+    setForm(DEFAULTS)
+    localStorage.removeItem(STORAGE_KEY)
   }
 
   return (
@@ -113,8 +139,8 @@ export default function Settings() {
       <Separator />
 
       <div className="flex justify-end gap-3">
-        <Button variant="outline">Reset</Button>
-        <Button variant="primary">Save Settings</Button>
+        <Button variant="outline" onClick={handleReset}>Reset</Button>
+        <Button variant="primary" onClick={handleSave} loading={saving}>Save Settings</Button>
       </div>
     </div>
   )

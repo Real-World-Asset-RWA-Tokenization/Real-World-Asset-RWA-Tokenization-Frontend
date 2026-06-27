@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Toggle } from '@/components/ui/toggle'
 import { fetchComplianceRules, fetchTransferRestrictions } from '@/lib/contracts/services'
 import type { ComplianceRule, TransferRestriction } from '@/types'
 
@@ -20,16 +21,22 @@ export default function Compliance() {
   const [rules, setRules] = useState<ComplianceRule[]>([])
   const [restrictions, setRestrictions] = useState<TransferRestriction | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [editingJurisdictions, setEditingJurisdictions] = useState(false)
   const [jurisdictionInput, setJurisdictionInput] = useState('')
 
   useEffect(() => {
-    Promise.all([fetchComplianceRules(), fetchTransferRestrictions()]).then(([r, t]) => {
-      setRules(r)
-      setRestrictions(t)
-      setJurisdictionInput(t.rules.approvedJurisdictions.join(', '))
-      setLoading(false)
-    })
+    let cancelled = false
+    Promise.all([fetchComplianceRules(), fetchTransferRestrictions()])
+      .then(([r, t]) => {
+        if (cancelled) return
+        setRules(r)
+        setRestrictions(t)
+        setJurisdictionInput(t.rules.approvedJurisdictions.join(', '))
+      })
+      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load compliance data') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
   function toggleRule(id: string) {
@@ -42,6 +49,7 @@ export default function Compliance() {
   }
 
   if (loading) return <ComplianceSkeleton />
+  if (error) return <ComplianceError error={error} />
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -73,18 +81,10 @@ export default function Compliance() {
                     <p className="text-xs text-slate-500 mt-0.5">{rule.description}</p>
                   </div>
                 </div>
-                <button
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    rule.enabled ? 'bg-blue-600' : 'bg-slate-300'
-                  }`}
-                  onClick={() => toggleRule(rule.id)}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      rule.enabled ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
+                <Toggle
+                  enabled={rule.enabled}
+                  onChange={() => toggleRule(rule.id)}
+                />
               </div>
             )
           })}
@@ -104,20 +104,12 @@ export default function Compliance() {
               <p className="text-sm font-medium text-slate-900">Enable Transfer Restrictions</p>
               <p className="text-xs text-slate-500">Apply transfer limits, holding periods, and jurisdiction rules</p>
             </div>
-            <button
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                restrictions?.enabled ? 'bg-blue-600' : 'bg-slate-300'
-              }`}
-              onClick={() =>
+            <Toggle
+              enabled={restrictions?.enabled ?? false}
+              onChange={() =>
                 setRestrictions((prev) => prev ? { ...prev, enabled: !prev.enabled } : null)
               }
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  restrictions?.enabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
+            />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -176,25 +168,27 @@ export default function Compliance() {
               <p className="text-sm font-medium text-slate-900">Require KYC for Transfers</p>
               <p className="text-xs text-slate-500">Both sender and receiver must have completed KYC</p>
             </div>
-            <button
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                restrictions?.rules.requireKYC ? 'bg-blue-600' : 'bg-slate-300'
-              }`}
-              onClick={() => updateRestrictions({ requireKYC: !restrictions?.rules.requireKYC })}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  restrictions?.rules.requireKYC ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
+            <Toggle
+              enabled={restrictions?.rules.requireKYC ?? false}
+              onChange={() => updateRestrictions({ requireKYC: !restrictions?.rules.requireKYC })}
+            />
           </div>
         </CardContent>
       </Card>
 
       <div className="flex justify-end">
-        <Button variant="primary">Save All Changes</Button>
+        <Button variant="primary" onClick={() => setRules(rules)}>Save All Changes</Button>
       </div>
+    </div>
+  )
+}
+
+function ComplianceError({ error }: { error: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <h2 className="text-xl font-semibold text-slate-900 mb-2">Failed to load compliance data</h2>
+      <p className="text-sm text-slate-500 mb-6">{error}</p>
+      <Button variant="primary" onClick={() => window.location.reload()}>Retry</Button>
     </div>
   )
 }

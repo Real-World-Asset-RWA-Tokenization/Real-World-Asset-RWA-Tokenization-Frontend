@@ -22,8 +22,16 @@ export async function getWalletAddress(): Promise<string | null> {
   }
 }
 
-export async function getAccountBalance(_address: string): Promise<string> {
-  return '0'
+export async function getAccountBalance(address: string): Promise<string> {
+  try {
+    const result = await getAddress()
+    if (result.address === address) {
+      return '0' // Placeholder: query ledger balance once Soroban RPC is integrated
+    }
+    return '0'
+  } catch {
+    return '0'
+  }
 }
 
 export { signTransaction }

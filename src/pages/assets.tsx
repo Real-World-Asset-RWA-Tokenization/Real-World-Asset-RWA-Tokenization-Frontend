@@ -13,14 +13,17 @@ export default function Assets() {
   const navigate = useNavigate()
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
 
   useEffect(() => {
-    fetchAssets().then((data) => {
-      setAssets(data)
-      setLoading(false)
-    })
+    let cancelled = false
+    fetchAssets()
+      .then((data) => { if (!cancelled) setAssets(data) })
+      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load assets') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
   const filtered = assets.filter(
@@ -30,6 +33,7 @@ export default function Assets() {
   )
 
   if (loading) return <AssetsSkeleton />
+  if (error) return <AssetsError error={error} />
 
   return (
     <div className="space-y-6">
@@ -47,7 +51,10 @@ export default function Assets() {
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <label htmlFor="asset-search" className="sr-only">Search assets</label>
           <input
+            id="asset-search"
+            type="search"
             className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Search assets..."
             value={search}
@@ -72,6 +79,16 @@ export default function Assets() {
       <Dialog open={showCreate} onClose={() => setShowCreate(false)} title="Tokenize New Asset" className="max-w-xl">
         <CreateTokenWizard onClose={() => setShowCreate(false)} onCreated={() => fetchAssets().then(setAssets)} />
       </Dialog>
+    </div>
+  )
+}
+
+function AssetsError({ error }: { error: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <h2 className="text-xl font-semibold text-slate-900 mb-2">Failed to load assets</h2>
+      <p className="text-sm text-slate-500 mb-6">{error}</p>
+      <Button variant="primary" onClick={() => window.location.reload()}>Retry</Button>
     </div>
   )
 }

@@ -4,13 +4,17 @@ import { Input } from '@/components/ui/input'
 
 describe('Input', () => {
   it('renders input element', () => {
-    render(<Input />)
-    expect(screen.getByRole('textbox')).toBeInTheDocument()
+    render(<Input id="test-input" />)
+    const input = document.getElementById('test-input')
+    expect(input).toBeInTheDocument()
+    expect(input?.tagName).toBe('INPUT')
   })
 
-  it('renders label when provided', () => {
+  it('renders label htmlFor when provided', () => {
     render(<Input id="test" label="Username" />)
-    expect(screen.getByText('Username')).toBeInTheDocument()
+    const label = screen.getByText('Username')
+    expect(label).toBeInTheDocument()
+    expect(label.tagName).toBe('LABEL')
   })
 
   it('shows error message', () => {
@@ -19,7 +23,8 @@ describe('Input', () => {
   })
 
   it('forwards value and onChange', () => {
-    render(<Input value="hello" onChange={() => {}} />)
-    expect(screen.getByRole('textbox')).toHaveValue('hello')
+    render(<Input id="test-input" value="hello" onChange={() => {}} />)
+    const input = document.getElementById('test-input') as HTMLInputElement
+    expect(input).toHaveValue('hello')
   })
 })

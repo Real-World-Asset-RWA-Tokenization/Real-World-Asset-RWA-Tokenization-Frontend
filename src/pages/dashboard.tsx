@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts'
 import { StatCard } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetchDashboardMetrics, fetchAssets, fetchInvestors } from '@/lib/contracts/services'
 import { formatCurrency, formatCompactNumber, getAssetClassLabel, timeAgo } from '@/lib/utils'
@@ -12,46 +13,59 @@ import type { DashboardMetrics, Asset, Investor } from '@/types'
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#6366f1']
 
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
   const [assets, setAssets] = useState<Asset[]>([])
   const [investors, setInvestors] = useState<Investor[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
     async function load() {
-      const [m, a, i] = await Promise.all([
-        fetchDashboardMetrics(),
-        fetchAssets(),
-        fetchInvestors(),
-      ])
-      setMetrics(m)
-      setAssets(a)
-      setInvestors(i)
-      setLoading(false)
+      try {
+        const [m, a, i] = await Promise.all([
+          fetchDashboardMetrics(),
+          fetchAssets(),
+          fetchInvestors(),
+        ])
+        if (cancelled) return
+        setMetrics(m)
+        setAssets(a)
+        setInvestors(i)
+      } catch (err) {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
     load()
+    return () => { cancelled = true }
   }, [])
 
-  if (loading) return <DashboardSkeleton />
-
-  const assetClassDist = assets.reduce<Record<string, number>>((acc, a) => {
+  const assetClassDist = useMemo(() => assets.reduce<Record<string, number>>((acc, a) => {
     acc[a.assetClass] = (acc[a.assetClass] ?? 0) + Number(a.totalSupply)
     return acc
-  }, {})
+  }, {}), [assets])
 
-  const pieData = Object.entries(assetClassDist).map(([name, value]) => ({
+  const pieData = useMemo(() => Object.entries(assetClassDist).map(([name, value]) => ({
     name: getAssetClassLabel(name),
     value,
-  }))
+  })), [assetClassDist])
 
-  const volumeData = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => ({
-    day,
-    volume: Math.floor(Math.random() * 500000 + 100000),
-  }))
+  const volumeData = useMemo(() => ['150000', '230000', '180000', '320000', '280000', '210000', '190000'].map((vol, i) => ({
+    day: DAYS[i],
+    volume: Number(vol),
+  })), [])
 
-  const pendingKYC = investors.filter((i) => i.kycStatus === 'pending')
+  const pendingKYC = useMemo(() => investors.filter((i) => i.kycStatus === 'pending'), [investors])
+
+  if (loading) return <DashboardSkeleton />
+  if (error) return <DashboardError error={error} />
 
   return (
     <div className="space-y-6">
@@ -177,6 +191,21 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function DashboardError({ error }: { error: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center">
+      <div className="rounded-full bg-red-100 p-4 mb-4">
+        <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+      </div>
+      <h2 className="text-xl font-semibold text-slate-900 mb-2">Failed to load dashboard</h2>
+      <p className="text-sm text-slate-500 mb-6 max-w-md">{error}</p>
+      <Button variant="primary" onClick={() => window.location.reload()}>Retry</Button>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, ShieldCheck, ShieldX, Clock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { fetchInvestors } from '@/lib/contracts/services'
@@ -12,14 +13,17 @@ export default function Investors() {
   const navigate = useNavigate()
   const [investors, setInvestors] = useState<Investor[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all')
 
   useEffect(() => {
-    fetchInvestors().then((data) => {
-      setInvestors(data)
-      setLoading(false)
-    })
+    let cancelled = false
+    fetchInvestors()
+      .then((data) => { if (!cancelled) setInvestors(data) })
+      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load investors') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
   const filtered = investors.filter((inv) => {
@@ -32,6 +36,7 @@ export default function Investors() {
   })
 
   if (loading) return <InvestorsSkeleton />
+  if (error) return <InvestorsError error={error} />
 
   return (
     <div className="space-y-6">
@@ -43,7 +48,10 @@ export default function Investors() {
       <div className="flex items-center gap-4 flex-wrap">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <label htmlFor="investor-search" className="sr-only">Search investors</label>
           <input
+            id="investor-search"
+            type="search"
             className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Search investors..."
             value={search}
@@ -131,6 +139,16 @@ export default function Investors() {
           <p className="text-lg font-medium text-slate-900">No investors found</p>
         </div>
       )}
+    </div>
+  )
+}
+
+function InvestorsError({ error }: { error: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <h2 className="text-xl font-semibold text-slate-900 mb-2">Failed to load investors</h2>
+      <p className="text-sm text-slate-500 mb-6">{error}</p>
+      <Button variant="primary" onClick={() => window.location.reload()}>Retry</Button>
     </div>
   )
 }

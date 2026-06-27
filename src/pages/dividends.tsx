@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -14,13 +14,16 @@ import type { DividendDistribution } from '@/types'
 export default function Dividends() {
   const [dividends, setDividends] = useState<DividendDistribution[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
-    fetchDividends().then((data) => {
-      setDividends(data)
-      setLoading(false)
-    })
+    let cancelled = false
+    fetchDividends()
+      .then((data) => { if (!cancelled) setDividends(data) })
+      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load dividends') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
   const totalDistributed = dividends
@@ -30,6 +33,7 @@ export default function Dividends() {
   const pendingCount = dividends.filter((d) => d.status === 'pending').length
 
   if (loading) return <DividendsSkeleton />
+  if (error) return <DividendsError error={error} />
 
   return (
     <div className="space-y-6">
@@ -106,6 +110,16 @@ export default function Dividends() {
       <Dialog open={showForm} onClose={() => setShowForm(false)} title="New Dividend Distribution">
         <DividendForm onClose={() => setShowForm(false)} onDistributed={() => fetchDividends().then(setDividends)} />
       </Dialog>
+    </div>
+  )
+}
+
+function DividendsError({ error }: { error: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <h2 className="text-xl font-semibold text-slate-900 mb-2">Failed to load dividends</h2>
+      <p className="text-sm text-slate-500 mb-6">{error}</p>
+      <Button variant="primary" onClick={() => window.location.reload()}>Retry</Button>
     </div>
   )
 }

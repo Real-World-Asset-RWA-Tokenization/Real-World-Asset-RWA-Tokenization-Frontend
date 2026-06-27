@@ -57,7 +57,7 @@ test.describe('RWA Tokenization Frontend', () => {
   test('asset detail page loads from list', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('link', { name: 'Assets' }).click()
-    await page.waitForTimeout(500)
+    await expect(page.getByText('Manhattan Prime Office')).toBeVisible({ timeout: 10000 })
 
     const firstCard = page.locator('[class*="cursor-pointer"]').first()
     if (await firstCard.isVisible()) {
@@ -68,7 +68,7 @@ test.describe('RWA Tokenization Frontend', () => {
 
   test('search filters assets', async ({ page }) => {
     await page.goto('/assets')
-    await page.waitForTimeout(500)
+    await expect(page.getByText('Manhattan Prime Office')).toBeVisible({ timeout: 10000 })
 
     const searchInput = page.locator('input[placeholder="Search assets..."]')
     await expect(searchInput).toBeVisible()

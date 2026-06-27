@@ -15,14 +15,17 @@ export default function InvestorDetail() {
   const navigate = useNavigate()
   const [investor, setInvestor] = useState<Investor | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => {
     if (!id) return
-    fetchInvestorById(id).then((data) => {
-      setInvestor(data ?? null)
-      setLoading(false)
-    })
+    let cancelled = false
+    fetchInvestorById(id)
+      .then((data) => { if (!cancelled) setInvestor(data ?? null) })
+      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load investor') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [id])
 
   async function handleKYCApprove() {
@@ -40,6 +43,7 @@ export default function InvestorDetail() {
   }
 
   if (loading) return <DetailSkeleton />
+  if (error) return <InvestorDetailError error={error} />
   if (!investor) return <NotFound />
 
   return (
@@ -194,6 +198,16 @@ export default function InvestorDetail() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  )
+}
+
+function InvestorDetailError({ error }: { error: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <h2 className="text-xl font-semibold text-slate-900 mb-2">Failed to load investor</h2>
+      <p className="text-sm text-slate-500 mb-6">{error}</p>
+      <Button variant="primary" onClick={() => window.location.reload()}>Retry</Button>
     </div>
   )
 }

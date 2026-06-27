@@ -43,9 +43,14 @@ export async function fetchDashboardMetrics(_walletAddress?: string): Promise<Da
   return MOCK_METRICS
 }
 
-export async function createContractCall<T = unknown>(_method: string, _args: unknown[], _contractId: string): Promise<T> {
+export interface ContractCallResult {
+  hash: string
+  status: 'SUCCESS' | 'FAILED'
+}
+
+export async function createContractCall(_method: string, _args: unknown[], _contractId: string): Promise<ContractCallResult> {
   await delay(1500)
-  return { hash: '0x' + Math.random().toString(36).slice(2), status: 'SUCCESS' } as T
+  return { hash: '0x' + Math.random().toString(36).slice(2), status: 'SUCCESS' }
 }
 
 export async function deployToken(_params: {
@@ -89,7 +94,17 @@ export async function toggleWhitelist(_investorId: string, _whitelisted: boolean
   await delay(800)
 }
 
-export async function saveSettings(_settings: Record<string, string>): Promise<void> {
+export interface AppSettings {
+  issuerName: string
+  rpcUrl: string
+  networkPassphrase: string
+  kycProvider: string
+  kycEndpoint: string
+  defaultApr: string
+  notificationEmail: string
+}
+
+export async function saveSettings(_settings: AppSettings): Promise<void> {
   await delay(1000)
 }
 

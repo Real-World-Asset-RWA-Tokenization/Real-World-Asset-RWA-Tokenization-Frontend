@@ -14,7 +14,8 @@
     "test:e2e": "playwright test",
     "test:coverage": "vitest run --coverage",
     "storybook": "storybook dev -p 6006",
-    "storybook:build": "storybook build -o storybook-static"
+    "storybook:build": "storybook build -o storybook-static",
+    "prepare": "husky"
   },
   "dependencies": {
     "@sentry/react": "^10.59.0",
@@ -49,6 +50,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "husky": "^9.1.7",
     "jsdom": "^29.1.1",
     "rollup-plugin-visualizer": "^7.0.1",
     "storybook": "^10.4.6",

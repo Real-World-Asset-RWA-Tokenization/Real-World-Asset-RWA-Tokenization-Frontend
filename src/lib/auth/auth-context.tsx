@@ -37,8 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const connect = useCallback(async () => {
-    setLoading(true)
+  const connect = useCallback(async (skipLoading = false) => {
+    if (!skipLoading) setLoading(true)
     setError(null)
     try {
       const connected = await isConnected()
@@ -74,20 +74,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem('rwa_session')
   }, [])
 
-  const restore = useCallback(async () => {
-    try {
-      const connected = await isConnected()
-      if (connected.isConnected) {
-        await connect()
+  useEffect(() => {
+    let cancelled = false
+    async function restore() {
+      try {
+        const connected = await isConnected()
+        if (cancelled) return
+        if (connected.isConnected) {
+          const address = await getWalletAddress()
+          if (cancelled || !address) return
+          const role = await getUserRole(address)
+          if (cancelled) return
+          const ses: Session = {
+            walletAddress: address,
+            role,
+            isIssuer: role === 'issuer' || role === 'admin',
+            isInvestor: role === 'investor' || role === 'admin',
+            isAdmin: role === 'admin',
+          }
+          setSession(ses)
+          sessionStorage.setItem('rwa_session', JSON.stringify(ses))
+        }
+      } catch {
+        // noop
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-    } catch {
-      // noop
-    } finally {
-      setLoading(false)
     }
-  }, [connect])
-
-  useEffect(() => { restore() }, [restore])
+    restore()
+    return () => { cancelled = true }
+  }, [])
 
   return (
     <AuthContext.Provider value={{ session, loading, error, connect, disconnect }}>
@@ -96,10 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   return useContext(AuthContext)
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useSession(): Session | null {
   const { session } = useAuth()
   return session

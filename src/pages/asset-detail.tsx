@@ -15,16 +15,20 @@ export default function AssetDetail() {
   const navigate = useNavigate()
   const [asset, setAsset] = useState<Asset | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
-    fetchAssetById(id).then((data) => {
-      setAsset(data ?? null)
-      setLoading(false)
-    })
+    let cancelled = false
+    fetchAssetById(id)
+      .then((data) => { if (!cancelled) setAsset(data ?? null) })
+      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load asset') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [id])
 
   if (loading) return <DetailSkeleton />
+  if (error) return <AssetDetailError error={error} />
   if (!asset) return <NotFound />
 
   return (
@@ -147,6 +151,16 @@ export default function AssetDetail() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  )
+}
+
+function AssetDetailError({ error }: { error: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <h2 className="text-xl font-semibold text-slate-900 mb-2">Failed to load asset</h2>
+      <p className="text-sm text-slate-500 mb-6">{error}</p>
+      <Button variant="primary" onClick={() => window.location.reload()}>Retry</Button>
     </div>
   )
 }

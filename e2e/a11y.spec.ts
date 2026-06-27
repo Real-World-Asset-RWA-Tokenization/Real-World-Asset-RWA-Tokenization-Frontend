@@ -5,11 +5,6 @@ test.describe('Accessibility audit', () => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
 
-    const violations = await page.evaluate(() => {
-      return (window as any).__AXE_RESULTS__ ?? []
-    })
-
-    // Manual a11y checks
     const html = page.locator('html')
     await expect(html).toHaveAttribute('lang')
 
@@ -26,25 +21,21 @@ test.describe('Accessibility audit', () => {
 
   test('assets page has proper heading structure', async ({ page }) => {
     await page.goto('/assets')
-    await page.waitForTimeout(500)
     await expect(page.locator('h2')).toContainText('Assets')
   })
 
   test('dialog is keyboard accessible', async ({ page }) => {
     await page.goto('/assets')
-    await page.waitForTimeout(500)
+    await expect(page.getByText('Tokenize Asset')).toBeVisible({ timeout: 10000 })
 
     const tokenizeBtn = page.getByText('Tokenize Asset')
     if (await tokenizeBtn.isVisible()) {
       await tokenizeBtn.click()
-      await page.waitForTimeout(300)
-
-      const dialog = page.locator('[role="dialog"]')
-      await expect(dialog).toBeVisible()
-      await expect(dialog).toHaveAttribute('aria-modal', 'true')
+      await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 3000 })
+      await expect(page.locator('[role="dialog"]')).toHaveAttribute('aria-modal', 'true')
 
       await page.keyboard.press('Escape')
-      await expect(dialog).not.toBeVisible()
+      await expect(page.locator('[role="dialog"]')).not.toBeVisible()
     }
   })
 
