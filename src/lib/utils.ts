@@ -10,9 +10,9 @@ export function shortenAddress(address: string, chars = 6): string {
   return `${address.slice(0, chars)}...${address.slice(-chars)}`
 }
 
-export function formatCurrency(value: string | number, decimals = 2): string {
+export function formatCurrency(value: string | number | null | undefined, decimals = 2): string {
   const num = typeof value === 'string' ? Number.parseFloat(value) : value
-  if (Number.isNaN(num)) return '$0.00'
+  if (num === null || num === undefined || !Number.isFinite(num)) return '$0.00'
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -21,15 +21,15 @@ export function formatCurrency(value: string | number, decimals = 2): string {
   }).format(num)
 }
 
-export function formatNumber(value: string | number): string {
+export function formatNumber(value: string | number | null | undefined): string {
   const num = typeof value === 'string' ? Number.parseFloat(value) : value
-  if (Number.isNaN(num)) return '0'
+  if (num === null || num === undefined || !Number.isFinite(num)) return '0'
   return new Intl.NumberFormat('en-US').format(num)
 }
 
-export function formatCompactNumber(value: string | number): string {
+export function formatCompactNumber(value: string | number | null | undefined): string {
   const num = typeof value === 'string' ? Number.parseFloat(value) : value
-  if (Number.isNaN(num)) return '0'
+  if (num === null || num === undefined || !Number.isFinite(num)) return '0'
   if (num >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(2)}B`
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(2)}M`
   if (num >= 1_000) return `${(num / 1_000).toFixed(2)}K`
@@ -41,16 +41,6 @@ export function formatDate(date: string): string {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  })
-}
-
-export function formatDateTime(date: string): string {
-  return new Date(date).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   })
 }
 

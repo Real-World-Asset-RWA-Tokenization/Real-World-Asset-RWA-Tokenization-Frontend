@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { useToast } from '@/lib/errors/toast'
 import { ASSET_CLASSES } from '@/lib/constants'
+import { deployToken } from '@/lib/contracts/services'
 import type { AssetClass } from '@/types'
 
 interface CreateTokenWizardProps {
@@ -14,6 +16,7 @@ interface CreateTokenWizardProps {
 export function CreateTokenWizard({ onClose, onCreated }: CreateTokenWizardProps) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const { addToast } = useToast()
   const [form, setForm] = useState({
     name: '',
     symbol: '',
@@ -32,11 +35,24 @@ export function CreateTokenWizard({ onClose, onCreated }: CreateTokenWizardProps
 
   async function handleDeploy() {
     setLoading(true)
-    // Simulate contract deployment
-    await new Promise((r) => setTimeout(r, 2000))
-    setLoading(false)
-    onCreated?.()
-    onClose()
+    try {
+      const contractId = await deployToken({
+        name: form.name,
+        symbol: form.symbol,
+        assetClass: form.assetClass || 'other',
+        totalSupply: form.totalSupply,
+        kycRequired: form.kycRequired,
+        whitelistRequired: form.whitelistRequired,
+        transferRestrictions: form.transferRestrictions,
+      })
+      addToast(`Token deployed to ${contractId}`, 'success')
+      onCreated?.()
+      onClose()
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to deploy token', 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

@@ -4,16 +4,21 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 import { visualizer } from 'rollup-plugin-visualizer'
 
+// Bundle analysis is opt-in: ANALYZE=true npm run build
 export default defineConfig({
   plugins: [
     tailwindcss(),
     react(),
-    visualizer({
-      filename: 'dist/stats.html',
-      gzipSize: true,
-      brotliSize: true,
-      open: false,
-    }),
+    ...(process.env.ANALYZE === 'true'
+      ? [
+          visualizer({
+            filename: 'dist/stats.html',
+            gzipSize: true,
+            brotliSize: true,
+            open: false,
+          }),
+        ]
+      : []),
   ],
   resolve: {
     alias: {

@@ -2,14 +2,16 @@ import {
   rpc,
   Contract,
   TransactionBuilder,
-  Networks,
   nativeToScVal,
   scValToNative,
   Address,
   type xdr,
 } from 'stellar-sdk'
+import { NETWORK_DEFAULTS } from './addresses'
 
 export { Address }
+
+export type NetworkName = 'testnet' | 'mainnet' | 'futurenet'
 
 export interface ContractCallOptions {
   contractId: string
@@ -21,13 +23,22 @@ export interface ContractCallOptions {
 export interface ContractClientConfig {
   rpcUrl: string
   networkPassphrase: string
-  network: 'testnet' | 'mainnet' | 'futurenet'
+  network: NetworkName
 }
 
+/** Resolve the configured Stellar network, defaulting to testnet. */
+function resolveNetwork(): NetworkName {
+  const value = import.meta.env.VITE_STELLAR_NETWORK
+  return value === 'mainnet' || value === 'futurenet' ? value : 'testnet'
+}
+
+const network = resolveNetwork()
+
+/** Default Soroban RPC configuration derived from .env (see .env.example). */
 export const DEFAULT_CONFIG: ContractClientConfig = {
-  rpcUrl: import.meta.env.VITE_RPC_URL ?? 'https://soroban-testnet.stellar.org',
-  networkPassphrase: import.meta.env.VITE_NETWORK_PASSPHRASE ?? Networks.TESTNET,
-  network: 'testnet',
+  rpcUrl: import.meta.env.VITE_RPC_URL ?? NETWORK_DEFAULTS[network].rpcUrl,
+  networkPassphrase: import.meta.env.VITE_NETWORK_PASSPHRASE ?? NETWORK_DEFAULTS[network].networkPassphrase,
+  network,
 }
 
 export function getServer(config = DEFAULT_CONFIG) {

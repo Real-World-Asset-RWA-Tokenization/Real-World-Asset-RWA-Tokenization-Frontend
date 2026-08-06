@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router'
 import { ArrowLeft, Shield, ShieldCheck, ShieldX, Clock, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
-import { fetchInvestorById } from '@/lib/contracts/services'
+import { fetchInvestorById, approveInvestorKyc, rejectInvestorKyc, toggleWhitelist } from '@/lib/contracts/services'
+import { useToast } from '@/lib/errors/toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Investor } from '@/types'
 
 export default function InvestorDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { addToast } = useToast()
   const [investor, setInvestor] = useState<Investor | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -29,17 +31,45 @@ export default function InvestorDetail() {
   }, [id])
 
   async function handleKYCApprove() {
+    if (!investor) return
     setActionLoading(true)
-    await new Promise((r) => setTimeout(r, 1000))
-    setInvestor((prev) => prev ? { ...prev, kycStatus: 'approved', whitelisted: true } : null)
-    setActionLoading(false)
+    try {
+      await approveInvestorKyc(investor.id)
+      setInvestor((prev) => prev ? { ...prev, kycStatus: 'approved', whitelisted: true } : null)
+      addToast('KYC approved and investor whitelisted', 'success')
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to approve KYC', 'error')
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   async function handleKYCReject() {
+    if (!investor) return
     setActionLoading(true)
-    await new Promise((r) => setTimeout(r, 1000))
-    setInvestor((prev) => prev ? { ...prev, kycStatus: 'rejected' } : null)
-    setActionLoading(false)
+    try {
+      await rejectInvestorKyc(investor.id)
+      setInvestor((prev) => prev ? { ...prev, kycStatus: 'rejected' } : null)
+      addToast('KYC verification rejected', 'warning')
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to reject KYC', 'error')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handleToggleWhitelist() {
+    if (!investor) return
+    setActionLoading(true)
+    try {
+      await toggleWhitelist(investor.id, !investor.whitelisted)
+      setInvestor((prev) => prev ? { ...prev, whitelisted: !prev.whitelisted } : null)
+      addToast(investor.whitelisted ? 'Removed from whitelist' : 'Added to whitelist', 'success')
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to update whitelist', 'error')
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   if (loading) return <DetailSkeleton />
@@ -191,7 +221,8 @@ export default function InvestorDetail() {
             <Button
               variant={investor.whitelisted ? 'outline' : 'primary'}
               size="sm"
-              onClick={() => setInvestor((prev) => prev ? { ...prev, whitelisted: !prev.whitelisted } : null)}
+              onClick={handleToggleWhitelist}
+              loading={actionLoading}
             >
               {investor.whitelisted ? 'Remove from Whitelist' : 'Add to Whitelist'}
             </Button>

@@ -89,13 +89,6 @@ export interface DashboardMetrics {
   uniqueHolders: number
 }
 
-export interface WalletInfo {
-  connected: boolean
-  address: string
-  network: string
-  balance: string
-}
-
 export interface NavItem {
   label: string
   path: string

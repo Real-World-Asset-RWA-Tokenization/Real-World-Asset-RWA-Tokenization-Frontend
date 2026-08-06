@@ -13,7 +13,7 @@ test.describe('RWA Tokenization Frontend', () => {
     await page.goto('/')
     await page.getByRole('link', { name: 'Assets' }).click()
     await expect(page.locator('h2')).toContainText('Assets')
-    await expect(page.locator('button')).toContainText('Tokenize Asset')
+    await expect(page.getByRole('button', { name: 'Tokenize Asset' })).toBeVisible()
   })
 
   test('navigates to investors page', async ({ page }) => {
@@ -43,15 +43,12 @@ test.describe('RWA Tokenization Frontend', () => {
   test('dark mode toggle works', async ({ page }) => {
     await page.goto('/')
     const html = page.locator('html')
-    const initialClass = await html.getAttribute('class')
 
     await page.getByRole('button', { name: /switch/i }).click()
-    const toggledClass = await html.getAttribute('class')
-    expect(toggledClass).not.toBe(initialClass)
+    await expect(html).toHaveClass(/dark/)
 
     await page.getByRole('button', { name: /switch/i }).click()
-    const restoredClass = await html.getAttribute('class')
-    expect(restoredClass).toBe(initialClass)
+    await expect(html).not.toHaveClass(/dark/)
   })
 
   test('asset detail page loads from list', async ({ page }) => {

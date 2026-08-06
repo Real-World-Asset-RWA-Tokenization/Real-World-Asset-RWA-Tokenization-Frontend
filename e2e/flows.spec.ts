@@ -39,7 +39,7 @@ test.describe('Critical user flows', () => {
     expect(count).toBeGreaterThanOrEqual(1)
 
     for (let i = 0; i < count; i++) {
-      await expect(rows.nth(i)).toContainText('Pending')
+      await expect(rows.nth(i)).toContainText(/pending/i)
     }
   })
 
@@ -132,6 +132,6 @@ test.describe('Critical user flows', () => {
 
     await expect(page.getByText('Total Distributed')).toBeVisible()
     await expect(page.getByText('Total Distributions')).toBeVisible()
-    await expect(page.getByText('Pending')).toBeVisible()
+    await expect(page.getByText('Pending', { exact: true })).toBeVisible()
   })
 })

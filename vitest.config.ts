@@ -15,5 +15,22 @@ export default defineConfig({
     setupFiles: ['./src/__tests__/setup.ts'],
     css: true,
     exclude: ['e2e/**', 'node_modules/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.stories.{ts,tsx}',
+        'src/__tests__/**',
+        'src/main.tsx',
+      ],
+      thresholds: {
+        lines: 70,
+        statements: 70,
+        functions: 60,
+        branches: 55,
+      },
+    },
   },
 })

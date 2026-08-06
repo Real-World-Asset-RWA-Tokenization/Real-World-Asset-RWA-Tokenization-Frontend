@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { useToast } from '@/lib/errors/toast'
+import { getServer } from '@/lib/contracts/client'
+import type { ContractClientConfig } from '@/lib/contracts/client'
 
 const STORAGE_KEY = 'rwa_settings'
 
@@ -28,8 +31,10 @@ function loadSettings(): Record<string, string> {
 }
 
 export default function Settings() {
+  const { addToast } = useToast()
   const [form, setForm] = useState(loadSettings)
   const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
 
   function updateField(key: string, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -38,12 +43,34 @@ export default function Settings() {
   function handleSave() {
     setSaving(true)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(form))
-    setTimeout(() => setSaving(false), 500)
+    setTimeout(() => {
+      setSaving(false)
+      addToast('Settings saved', 'success')
+    }, 400)
   }
 
   function handleReset() {
     setForm(DEFAULTS)
     localStorage.removeItem(STORAGE_KEY)
+    addToast('Settings reset to defaults', 'info')
+  }
+
+  /** Verifies connectivity against the configured Soroban RPC endpoint. */
+  async function handleTestConnection() {
+    setTesting(true)
+    try {
+      const config: ContractClientConfig = {
+        rpcUrl: form.rpcUrl,
+        networkPassphrase: form.networkPassphrase,
+        network: form.rpcUrl.includes('mainnet') ? 'mainnet' : 'testnet',
+      }
+      const health = await getServer(config).getHealth()
+      addToast(`Connected to Soroban RPC (status: ${health.status})`, 'success')
+    } catch {
+      addToast('Could not reach the Soroban RPC endpoint', 'error')
+    } finally {
+      setTesting(false)
+    }
   }
 
   return (
@@ -91,7 +118,9 @@ export default function Settings() {
             value={form.networkPassphrase}
             onChange={(e) => updateField('networkPassphrase', e.target.value)}
           />
-          <Button variant="outline" size="sm">Test Connection</Button>
+          <Button variant="outline" size="sm" onClick={handleTestConnection} loading={testing}>
+            Test Connection
+          </Button>
         </CardContent>
       </Card>
 

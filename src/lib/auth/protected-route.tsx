@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router'
 import { useAuth, type Role } from './auth-context'
 import { Spinner } from '@/components/ui/spinner'
 

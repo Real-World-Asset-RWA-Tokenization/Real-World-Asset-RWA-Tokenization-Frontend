@@ -1,22 +1,33 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter } from 'react-router'
 import { ProtectedRoute } from '@/lib/auth/protected-route'
 import { AuthProvider } from '@/lib/auth/auth-context'
 
-vi.mock('@/lib/stellar', () => ({
-  getWalletAddress: vi.fn().mockResolvedValue('GABC...1234'),
-}))
+const mockCheckWalletConnection = vi.fn()
+const mockGetWalletAddress = vi.fn()
+const mockGetUserRole = vi.fn()
 
-vi.mock('@stellar/freighter-api', () => ({
-  isConnected: vi.fn().mockResolvedValue({ isConnected: true }),
+vi.mock('@/lib/stellar', () => ({
+  checkWalletConnection: (...args: unknown[]) => mockCheckWalletConnection(...args),
+  getWalletAddress: (...args: unknown[]) => mockGetWalletAddress(...args),
+  isDemoModeEnabled: () => false,
+  DEMO_WALLET_ADDRESS: 'GDEMO...WALLET',
 }))
 
 vi.mock('@/lib/contracts/services', () => ({
-  getUserRole: vi.fn().mockResolvedValue('investor'),
+  getUserRole: (...args: unknown[]) => mockGetUserRole(...args),
 }))
 
 describe('ProtectedRoute', () => {
+  beforeEach(() => {
+    sessionStorage.clear()
+    vi.clearAllMocks()
+    mockCheckWalletConnection.mockResolvedValue(true)
+    mockGetWalletAddress.mockResolvedValue('GABC...1234')
+    mockGetUserRole.mockResolvedValue('investor')
+  })
+
   it('shows loading while connecting', () => {
     render(
       <MemoryRouter>
@@ -37,6 +48,7 @@ describe('ProtectedRoute', () => {
       isIssuer: false,
       isInvestor: true,
       isAdmin: false,
+      isDemo: false,
     }))
     render(
       <MemoryRouter>
@@ -57,6 +69,7 @@ describe('ProtectedRoute', () => {
       isIssuer: false,
       isInvestor: true,
       isAdmin: false,
+      isDemo: false,
     }))
     render(
       <MemoryRouter>

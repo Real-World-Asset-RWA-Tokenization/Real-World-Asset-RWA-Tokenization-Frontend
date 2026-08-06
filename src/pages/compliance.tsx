@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Toggle } from '@/components/ui/toggle'
-import { fetchComplianceRules, fetchTransferRestrictions } from '@/lib/contracts/services'
+import { fetchComplianceRules, fetchTransferRestrictions, updateComplianceRule } from '@/lib/contracts/services'
+import { useToast } from '@/lib/errors/toast'
 import type { ComplianceRule, TransferRestriction } from '@/types'
 
 const iconMap: Record<string, typeof Shield> = {
@@ -18,9 +19,11 @@ const iconMap: Record<string, typeof Shield> = {
 }
 
 export default function Compliance() {
+  const { addToast } = useToast()
   const [rules, setRules] = useState<ComplianceRule[]>([])
   const [restrictions, setRestrictions] = useState<TransferRestriction | null>(null)
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [editingJurisdictions, setEditingJurisdictions] = useState(false)
   const [jurisdictionInput, setJurisdictionInput] = useState('')
@@ -46,6 +49,18 @@ export default function Compliance() {
   function updateRestrictions(updates: Partial<TransferRestriction['rules']>) {
     if (!restrictions) return
     setRestrictions({ ...restrictions, rules: { ...restrictions.rules, ...updates } })
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await Promise.all(rules.map((rule) => updateComplianceRule(rule.id, rule.enabled)))
+      addToast('Compliance settings saved', 'success')
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to save compliance settings', 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (loading) return <ComplianceSkeleton />
@@ -177,7 +192,7 @@ export default function Compliance() {
       </Card>
 
       <div className="flex justify-end">
-        <Button variant="primary" onClick={() => setRules(rules)}>Save All Changes</Button>
+        <Button variant="primary" onClick={handleSave} loading={saving}>Save All Changes</Button>
       </div>
     </div>
   )

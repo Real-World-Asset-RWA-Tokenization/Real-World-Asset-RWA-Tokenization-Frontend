@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from 'react'
-import { getWalletAddress } from '@/lib/stellar'
-import { isConnected } from '@stellar/freighter-api'
+import { checkWalletConnection, getWalletAddress, isDemoModeEnabled, DEMO_WALLET_ADDRESS } from '@/lib/stellar'
 import { getUserRole } from '@/lib/contracts/services'
 
 export type Role = 'issuer' | 'investor' | 'admin'
@@ -11,6 +10,8 @@ export interface Session {
   isIssuer: boolean
   isInvestor: boolean
   isAdmin: boolean
+  /** True when the session was created by demo mode (no Freighter wallet). */
+  isDemo: boolean
 }
 
 interface AuthContextValue {
@@ -29,10 +30,26 @@ const AuthContext = createContext<AuthContextValue>({
   disconnect: () => {},
 })
 
+function buildSession(walletAddress: string, role: Role, isDemo = false): Session {
+  return {
+    walletAddress,
+    role,
+    isIssuer: role === 'issuer' || role === 'admin',
+    isInvestor: role === 'investor' || role === 'admin',
+    isAdmin: role === 'admin',
+    isDemo,
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(() => {
     const stored = typeof window !== 'undefined' ? sessionStorage.getItem('rwa_session') : null
-    return stored ? JSON.parse(stored) : null
+    if (!stored) return null
+    try {
+      return JSON.parse(stored) as Session
+    } catch {
+      return null
+    }
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -41,23 +58,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!skipLoading) setLoading(true)
     setError(null)
     try {
-      const connected = await isConnected()
-      if (!connected.isConnected) {
+      const connected = await checkWalletConnection()
+
+      // Without a wallet, fall back to a demo session when demo mode is on.
+      if (!connected) {
+        if (isDemoModeEnabled()) {
+          const demoSession = buildSession(DEMO_WALLET_ADDRESS, 'issuer', true)
+          setSession(demoSession)
+          sessionStorage.setItem('rwa_session', JSON.stringify(demoSession))
+          return
+        }
         throw new Error('Wallet not connected. Please install Freighter.')
       }
+
       const address = await getWalletAddress()
       if (!address) throw new Error('Could not get wallet address')
 
       const role = await getUserRole(address)
-      const ses: Session = {
-        walletAddress: address,
-        role,
-        isIssuer: role === 'issuer' || role === 'admin',
-        isInvestor: role === 'investor' || role === 'admin',
-        isAdmin: role === 'admin',
-      }
-      setSession(ses)
-      sessionStorage.setItem('rwa_session', JSON.stringify(ses))
+      const newSession = buildSession(address, role)
+      setSession(newSession)
+      sessionStorage.setItem('rwa_session', JSON.stringify(newSession))
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to connect'
       setError(msg)
@@ -78,31 +98,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     async function restore() {
       try {
-        const connected = await isConnected()
+        const connected = await checkWalletConnection()
         if (cancelled) return
-        if (connected.isConnected) {
+
+        if (connected) {
           const address = await getWalletAddress()
           if (cancelled || !address) return
           const role = await getUserRole(address)
           if (cancelled) return
-          const ses: Session = {
-            walletAddress: address,
-            role,
-            isIssuer: role === 'issuer' || role === 'admin',
-            isInvestor: role === 'investor' || role === 'admin',
-            isAdmin: role === 'admin',
-          }
-          setSession(ses)
-          sessionStorage.setItem('rwa_session', JSON.stringify(ses))
+          const newSession = buildSession(address, role)
+          setSession(newSession)
+          sessionStorage.setItem('rwa_session', JSON.stringify(newSession))
+        } else if (!sessionStorage.getItem('rwa_session') && isDemoModeEnabled()) {
+          // Fresh visit without Freighter: enable demo mode so the app is fully explorable.
+          const demoSession = buildSession(DEMO_WALLET_ADDRESS, 'issuer', true)
+          setSession(demoSession)
+          sessionStorage.setItem('rwa_session', JSON.stringify(demoSession))
         }
+        // Otherwise keep any session restored from storage.
       } catch {
-        // noop
+        // noop: leave the UI in a safe, unauthenticated state
       } finally {
         if (!cancelled) setLoading(false)
       }
     }
     restore()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   return (

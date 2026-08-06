@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { useToast } from '@/lib/errors/toast'
 import { MOCK_ASSETS } from '@/lib/constants'
+import { distributeDividend } from '@/lib/contracts/services'
 
 interface DividendFormProps {
   onClose: () => void
@@ -12,6 +14,7 @@ interface DividendFormProps {
 
 export function DividendForm({ onClose, onDistributed }: DividendFormProps) {
   const [loading, setLoading] = useState(false)
+  const { addToast } = useToast()
   const [form, setForm] = useState({
     assetId: '',
     amount: '',
@@ -20,10 +23,16 @@ export function DividendForm({ onClose, onDistributed }: DividendFormProps) {
 
   async function handleDistribute() {
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 2000))
-    setLoading(false)
-    onDistributed?.()
-    onClose()
+    try {
+      const txHash = await distributeDividend(form.assetId, form.amount, form.perShare)
+      addToast(`Distribution submitted (${txHash.slice(0, 10)}…)`, 'success')
+      onDistributed?.()
+      onClose()
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to distribute dividends', 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const assetOptions = MOCK_ASSETS.filter((a) => a.status === 'active').map((a) => ({
